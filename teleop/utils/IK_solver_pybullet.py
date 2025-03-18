@@ -55,11 +55,10 @@ class robot_solver:
         joint_positions = joint_rads
         for movable_joint_id, joint_position in zip(self.movable_joints, joint_positions):
             p.resetJointState(self.ROBOT_ID, movable_joint_id, joint_position)
-        # 获取机械臂ee link状态
         link_state = p.getLinkState(self.ROBOT_ID, self.EE_LINK_INDEX)
-        xyz_position = link_state[0]  # ee link的世界坐标系中的位置
-        orientation = link_state[1]  # ee link的世界坐标系中的四元数姿态
-        angle_axis = p.getAxisAngleFromQuaternion(orientation) # 转轴角
+        xyz_position = link_state[0]  
+        orientation = link_state[1]  
+        angle_axis = p.getAxisAngleFromQuaternion(orientation)
         if self.render:
             for idx, movable_joint in enumerate(self.movable_joints):
                 p.setJointMotorControl2(self.ROBOT_ID, movable_joint, p.POSITION_CONTROL, targetPosition=joint_positions[idx])
@@ -77,7 +76,6 @@ class robot_solver:
         Input quaternion [x y z w]
         Output rotation matrix R
         '''
-        # 四元数到旋转矩阵的转换
         q = quaternion
         R = np.array([[1 - 2 * (q[2]**2 + q[3]**2), 2 * (q[1] * q[2] - q[3] * q[0]), 2 * (q[1] * q[3] + q[2] * q[0])],
                     [2 * (q[1] * q[2] + q[3] * q[0]), 1 - 2 * (q[1]**2 + q[3]**2), 2 * (q[2] * q[3] - q[1] * q[0])],
@@ -85,11 +83,10 @@ class robot_solver:
         return R
 
     def create_homogeneous_matrix(self, position, quaternion):
-        # 创建4x4的齐次变换矩阵
-        R = self.quaternion_to_rotation_matrix(quaternion)  # 旋转矩阵
-        T = np.eye(4)  # 创建4x4单位矩阵
-        T[:3, :3] = R  # 将旋转矩阵放入T的上左部分
-        T[:3, 3] = position  # 将平移部分放入T的右上部分
+        R = self.quaternion_to_rotation_matrix(quaternion) 
+        T = np.eye(4)  
+        T[:3, :3] = R  
+        T[:3, 3] = position  
         return T
 
     def solve_fk_quat(self, joint_rads):
@@ -100,10 +97,9 @@ class robot_solver:
         joint_positions = joint_rads
         for movable_joint_id, joint_position in zip(self.movable_joints, joint_positions):
             p.resetJointState(self.ROBOT_ID, movable_joint_id, joint_position)
-        # 获取机械臂ee link状态
         link_state = p.getLinkState(self.ROBOT_ID, self.EE_LINK_INDEX)
-        xyz_position = link_state[0]  # ee link的世界坐标系中的位置
-        orientation = link_state[1]  # ee link的世界坐标系中的四元数姿态
+        xyz_position = link_state[0]  
+        orientation = link_state[1]  
         if self.render:
             for idx, movable_joint in enumerate(self.movable_joints):
                 p.setJointMotorControl2(self.ROBOT_ID, movable_joint, p.POSITION_CONTROL, targetPosition=joint_positions[idx])
@@ -115,21 +111,17 @@ class robot_solver:
         T = self.create_homogeneous_matrix(xyz_position, orientation)
         return T 
 
-    # def solve_ik(self, target_pos_xyz: np.ndarray=[0.6, 0.0, 0.43], target_axis_of_rot: np.ndarray=[0, 0, 0]):
     def solve_ik(self, target_pos_xyz: np.ndarray=[0.98324077, 0.09237641, 0.55775578], target_axis_of_rot: np.ndarray=[-0.02569118192651871, 0.11636336587600085, 0.026930236058372834]):
-        axis = np.array(target_axis_of_rot[:3])  # 提取旋转轴
-        angle = np.linalg.norm(axis)  # 旋转角度（轴的模）
-        if angle > 1e-6:  # 避免除以零
-            axis_normalized = axis / angle  # 单位化旋转轴
+        axis = np.array(target_axis_of_rot[:3]) 
+        angle = np.linalg.norm(axis)  
+        if angle > 1e-6:  
+            axis_normalized = axis / angle  
         else:
-            axis_normalized = [1, 0, 0]  # 默认值（无旋转时，旋转轴可选任意方向）
+            axis_normalized = [1, 0, 0]  
             angle = 0
 
         target_orientation = p.getQuaternionFromAxisAngle(axis_normalized, angle)
-
-        # 调用 inverse kinematics 函数
         joint_angles = p.calculateInverseKinematics(self.ROBOT_ID, self.EE_LINK_INDEX, target_pos_xyz, target_orientation, restPoses=self.movable_joint)
-
         self.draw_coordinate_frame(target_pos_xyz, target_orientation)
 
         if self.render:
@@ -140,7 +132,7 @@ class robot_solver:
         return joint_angles
     # maybe error
     def solve_ik_quat(self, target_pos_xyz: np.ndarray = np.array([0.98324077, 0.09237641, 0.55775578]), target_quat_orn: np.ndarray = np.array([0, 0, 0, 1])):
-        target_orientation = target_quat_orn # 直接使用输入的四元数
+        target_orientation = target_quat_orn 
         # print('target_pos_xyz',target_pos_xyz, 'target_quat_orn',target_quat_orn)
         # 调用 inverse kinematics 函数
         joint_angles = p.calculateInverseKinematics(self.ROBOT_ID, self.EE_LINK_INDEX, target_pos_xyz, target_orientation, restPoses=self.movable_joint)
@@ -156,11 +148,6 @@ class robot_solver:
 
     # maybe error
     def rotation_matrix_to_quaternion(self,R):
-        '''        return joint_angles
-
-        Input Rotation matrix
-        Output Quaternion
-        '''
         w = np.sqrt(1 + R[0, 0] + R[1, 1] + R[2, 2]) / 2.0
         x = (R[2, 1] - R[1, 2]) / (4.0 * w)
         y = (R[0, 2] - R[2, 0]) / (4.0 * w)
@@ -177,7 +164,6 @@ class robot_solver:
 
         target_orientation = self.rotation_matrix_to_quaternion(target_rot_matrix)
 
-        # 调用 inverse kinematics 函数 Quaternion in [x y z w]
         joint_angles = p.calculateInverseKinematics(self.ROBOT_ID, self.EE_LINK_INDEX, target_pos_xyz, target_orientation, restPoses=self.movable_joint)
         self.draw_coordinate_frame(target_pos_xyz, target_orientation)
 
