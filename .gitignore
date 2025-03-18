@@ -1,0 +1,22 @@
+# 忽略 Python 字节码缓存目录
+__pycache__/
+*.pyc
+
+# 忽略 .pem 文件
+*.pem
+
+# 忽略 IDE 相关的目录
+.idea/
+.vscode/
+
+# 忽略操作系统相关的目录
+.DS_Store
+Thumbs.db
+
+# 忽略虚拟环境
+venv/
+.venv/
+
+# 忽略日志文件
+*.log
+logs/
